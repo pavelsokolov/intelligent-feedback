@@ -163,7 +163,7 @@ function checkJobStatus($jobid)
 
 function handleReport($url)
 {
-    global $mediasite;
+    global $mediasite, $auth;
     //$myFile = fopen("$name.xml", 'w') or die('Problems');
     $file = tmpfile();
     $response = $mediasite->request('GET', "$url", ['sink' => $file]);

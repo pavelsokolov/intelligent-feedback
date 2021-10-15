@@ -51,7 +51,7 @@ foreach ($data as $user) {
 
 $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
 
-echo "Fetching vpl submissions from courseid 1155 \n\r";
+echo "\n\rFetching vpl submissions from courseid 1155 \n\r";
 foreach ($users as $i => $user) {
     //echo "Fetching vpl submissions for " . $user['username'] . " \n\r";
     $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
@@ -73,7 +73,7 @@ foreach ($users as $i => $user) {
 }
 
 
-echo "Fetching quiz attempts from courseid 1155 \n\r";
+echo "\n\rFetching quiz attempts from courseid 1155 \n\r";
 foreach ($users as $i => $user) {
   //  echo "Fetching quiz attempts for " . $user['username'] . " \n\r";
     $response = $ilearn->post($url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
@@ -93,10 +93,9 @@ foreach ($users as $i => $user) {
     echo progress_bar($i, count($users));
 }
 
-/*
-echo "Fetching logs from courseid 1155 \n\r";
+echo "\n\rFetching logs from courseid 1155 \n\r";
 foreach ($users as $i => $user) {
-    $lastlogid = $db->query('SELECT id from log where userid = '.$user['id'] .' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['id'];
+    $lastlogid = $db->query('SELECT id from log where userid = '.$user['id'] .' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['id'] ?? 0;
     $haslogs = true;
     $offset = 0;
     do {
@@ -122,9 +121,8 @@ foreach ($users as $i => $user) {
     } while ($haslogs);
     echo progress_bar($i, count($users));
 }
-*/
 
-echo "Fetching grade histories from courseid 1155 \n\r";
+echo "\n\rFetching grade histories from courseid 1155 \n\r";
 foreach ($users as $i => $user) {
     $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
     $data = json_decode($response->getBody(), true);
