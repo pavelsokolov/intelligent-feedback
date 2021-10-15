@@ -1,0 +1,19 @@
+{
+  "play2": {
+    "username": "username",
+    "password": "password",
+    "url": "apiurl",
+    "sfapikey": "apikey"
+  },
+  "ilearn": {
+    "secret": "secret",
+    "url": "url"
+  },
+  "db": {
+    "type": "mysql",
+    "host": "host",
+    "database": "database",
+    "username": "username",
+    "password": "password"
+  }
+}
