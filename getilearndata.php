@@ -19,9 +19,6 @@ $ilearn = new Client([
     'headers' => [
         'Accept' => 'application/json'
     ]]);
-echo "Fetching students from courseid 1155 \n\r";
-$response = $ilearn->post($url . "getlogs.php?course=1155&type=course", ['form_params' => ['secret' => $secret]]);;
-$data = json_decode($response->getBody(), true);
 
 $db = new Medoo([
     'type' => $auth['db']['type'],
@@ -31,31 +28,39 @@ $db = new Medoo([
     'password' => $auth['db']['password']
 ]);
 
-foreach ($data as $user) {
-    if ($db->has('users', ['username' => $user['username']])) {
-        $db->update('users', [
-            'id' => $user['id'],
-            'courseid' => 1155,
-            'firstname' => $user['firstname'],
-            'lastname' => $user['lastname']],
-            ['username' => $user['username']]);
-    } else {
-        $db->insert('users', [
-            'id' => $user['id'],
-            'courseid' => 1155,
-            'firstname' => $user['firstname'],
-            'lastname' => $user['lastname'],
-            'username' => $user['username']
-        ]);
-    }
-}
-
+fetchUsers();
 $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
-
 fetchVpl();
 fetchGrade();
 fetchLog();
 fetchQuiz();
+
+function fetchUsers()
+{
+    global $db, $ilearn, $url, $secret;
+    echo "Fetching students from courseid 1155 \n\r";
+    $response = $ilearn->post($url . "getlogs.php?course=1155&type=course", ['form_params' => ['secret' => $secret]]);;
+    $data = json_decode($response->getBody(), true);
+    foreach ($data as $i => $user) {
+        if ($db->has('users', ['username' => $user['username']])) {
+            $db->update('users', [
+                'id' => $user['id'],
+                'courseid' => 1155,
+                'firstname' => $user['firstname'],
+                'lastname' => $user['lastname']],
+                ['username' => $user['username']]);
+        } else {
+            $db->insert('users', [
+                'id' => $user['id'],
+                'courseid' => 1155,
+                'firstname' => $user['firstname'],
+                'lastname' => $user['lastname'],
+                'username' => $user['username']
+            ]);
+        }
+        echo progress_bar($i, count($data));
+    }
+}
 
 function fetchVpl()
 {

@@ -1,7 +1,6 @@
 {
 	"require": {
 		"guzzlehttp/guzzle": "~6.4.1",
-		"phpoffice/phpspreadsheet": "^1.18",
 		"catfan/medoo": "^2.1"
 	},
 	"prefer-stable": true

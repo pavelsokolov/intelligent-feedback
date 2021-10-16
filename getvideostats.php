@@ -91,7 +91,7 @@ try {
     $sleep_time = 5;
 
     // Let's execute.
-    $execute = $mediasite->post($apiurl . "/UserReports('$reportid')/Execute", ['json' => ['DateRangeTypeOverride' => 'Yesterday']]);
+    $execute = $mediasite->post($apiurl . "/UserReports('$reportid')/Execute", ['json' => ['DateRangeTypeOverride' => 'AllDates']]);
     if ($execute->getStatusCode() == '200') {
         $resultid = json_decode($execute->getBody(), true)['ResultId'];
         $executejobid = json_decode($execute->getBody(), true)['JobId'];
