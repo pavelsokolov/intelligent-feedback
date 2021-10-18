@@ -101,7 +101,7 @@ function fetchVpl()
         $k = 0;
         do {
             try {
-                $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret], 'http_errors' => false]);
                 $data = json_decode($response->getBody(), true);
                 foreach ($data as $submission) {
                     $n = 0;
@@ -122,7 +122,7 @@ function fetchVpl()
                 }
                 echo progress_bar($i, count($users));
                 break;
-            } catch (GuzzleHttp\Exception\ClientException $e) {
+            } catch (Error $e) {
                 $k++;
                 usleep(10);
                 echo $e->getMessage() . "\n\r";
@@ -161,7 +161,7 @@ function fetchQuiz()
                 }
                 echo progress_bar($i, count($users));
                 break;
-            } catch (GuzzleHttp\Exception\ClientException $e) {
+            } catch (Error $e) {
                 $k++;
                 usleep(10);
                 echo $e->getMessage() . "\n\r";
@@ -244,7 +244,7 @@ function fetchGrade()
                 }
                 echo progress_bar($i, count($users));
                 break;
-            } catch (GuzzleHttp\Exception\ClientException $e) {
+            } catch (Error $e) {
                 $k++;
                 usleep(10);
                 echo $e->getMessage() . "\n\r";
