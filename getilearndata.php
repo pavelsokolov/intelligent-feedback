@@ -28,12 +28,42 @@ $db = new Medoo([
     'password' => $auth['db']['password']
 ]);
 
-fetchUsers();
-$users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
-fetchVpl();
-fetchGrade();
-fetchLog();
-fetchQuiz();
+$type = '';
+if (php_sapi_name() == 'cli') {
+    $opts = "t:";
+    $longopts = ["type:"];
+    $input = getopt($opts, $longopts);
+    $type = $input['t'] ?? $input['type'];
+}
+
+switch ($type) {
+    case 'users':
+        fetchUsers();
+        break;
+    case 'vpl':
+        $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
+        fetchVpl();
+        break;
+    case 'grade':
+        $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
+        fetchGrade();
+        break;
+    case 'log':
+        $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
+        fetchLog();
+        break;
+    case 'quiz':
+        $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
+        fetchQuiz();
+        break;
+    default:
+        fetchUsers();
+        $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
+        fetchVpl();
+        fetchGrade();
+        fetchLog();
+        fetchQuiz();
+}
 
 function fetchUsers()
 {
@@ -72,15 +102,21 @@ function fetchVpl()
         $data = json_decode($response->getBody(), true);
         foreach ($data as $submissions) {
             foreach ($submissions as $submission) {
-                try {
-                    if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
-                        $db->insert('vpl_submissions', $submission);
-                    } else {
-                        $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
+                $n = 0;
+                do {
+                    try {
+                        if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
+                            $db->insert('vpl_submissions', $submission);
+                        } else {
+                            $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
+                        }
+                        break;
+                    } catch (Error $e) {
+                        $n++;
+                        sleep(1);
+                        echo $e->getMessage() . "\n\r";
                     }
-                } catch (Error $e) {
-                    var_dump($e);
-                }
+                } while ($n < 3);
             }
         }
         echo progress_bar($i, count($users));
@@ -96,16 +132,22 @@ function fetchQuiz()
         $response = $ilearn->post($url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
         $data = json_decode($response->getBody(), true);
         foreach ($data as $attempt) {
-            try {
-                if (!$db->has('quiz_attempts', ['attemptid' => $attempt['attemptid']])) {
-                    $attempt['questions'] = json_encode($attempt['questions']);
-                    $db->insert('quiz_attempts', $attempt);
-                } else {
-                    $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
+            $n = 0;
+            do {
+                try {
+                    if (!$db->has('quiz_attempts', ['attemptid' => $attempt['attemptid']])) {
+                        $attempt['questions'] = json_encode($attempt['questions']);
+                        $db->insert('quiz_attempts', $attempt);
+                    } else {
+                        $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
+                    }
+                    break;
+                } catch (Error $e) {
+                    $n++;
+                    sleep(1);
+                    echo $e->getMessage() . "\n\r";
                 }
-            } catch (Error $e) {
-                var_dump($e);
-            }
+            } while ($n < 3);
         }
         echo progress_bar($i, count($users));
     }
@@ -127,20 +169,26 @@ function fetchLog()
                     $haslogs = false;
                 } else {
                     foreach ($data as $log) {
-                        try {
-                            if (!$db->has('log', ['id' => $log['id']])) {
-                                $db->insert('log', $log);
-                            } else {
-                                $db->update('log', $log, ['id' => $log['id']]);
+                        $i = 0;
+                        do {
+                            try {
+                                if (!$db->has('log', ['id' => $log['id']])) {
+                                    $db->insert('log', $log);
+                                } else {
+                                    $db->update('log', $log, ['id' => $log['id']]);
+                                }
+                                break;
+                            } catch (Error $e) {
+                                $i++;
+                                sleep(1);
+                                echo $e->getMessage() . "\n\r";
                             }
-                        } catch (Error $e) {
-                            var_dump($e);
-                        }
+                        } while ($i < 3);
                     }
                 }
                 $offset += 1000;
             } else {
-                var_dump('error');
+                echo "There was an error in " . $response->getEffectiveUrl() . "\n\r";
                 exit();
             }
         } while ($haslogs);
@@ -157,15 +205,21 @@ function fetchGrade()
         $data = json_decode($response->getBody(), true);
         if (!$data['empty']) {
             foreach ($data as $history) {
-                try {
-                    if (!$db->has('grades_history', ['id' => $history['id']])) {
-                        $db->insert('grades_history', $history);
-                    } else {
-                        $db->update('grades_history', $history, ['id' => $history['id']]);
+                $i = 0;
+                do {
+                    try {
+                        if (!$db->has('grades_history', ['id' => $history['id']])) {
+                            $db->insert('grades_history', $history);
+                        } else {
+                            $db->update('grades_history', $history, ['id' => $history['id']]);
+                        }
+                        break;
+                    } catch (Error $e) {
+                        $i++;
+                        sleep(1);
+                        echo $e->getMessage() . "\n\r";
                     }
-                } catch (Error $e) {
-                    var_dump($e);
-                }
+                } while ($i < 3);
             }
         }
         echo progress_bar($i, count($users));
