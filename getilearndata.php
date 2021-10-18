@@ -97,27 +97,25 @@ function fetchVpl()
     global $db, $ilearn, $url, $users, $secret;
     echo "\n\rFetching vpl submissions from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
-        //echo "Fetching vpl submissions for " . $user['username'] . " \n\r";
         $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
         $data = json_decode($response->getBody(), true);
-        foreach ($data as $submissions) {
-            foreach ($submissions as $submission) {
-                $n = 0;
-                do {
-                    try {
-                        if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
-                            $db->insert('vpl_submissions', $submission);
-                        } else {
-                            $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
-                        }
-                        break;
-                    } catch (Error $e) {
-                        $n++;
-                        sleep(1);
-                        echo $e->getMessage() . "\n\r";
+        foreach ($data as $submission) {
+            $n = 0;
+            do {
+                try {
+                    if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
+                        $db->insert('vpl_submissions', $submission);
+                    } else {
+                        $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
                     }
-                } while ($n < 3);
-            }
+                    break;
+                } catch (Error $e) {
+                    $n++;
+                    usleep(10);
+                    var_dump($e);
+                    exit();
+                }
+            } while ($n < 3);
         }
         echo progress_bar($i, count($users));
     }
@@ -144,7 +142,7 @@ function fetchQuiz()
                     break;
                 } catch (Error $e) {
                     $n++;
-                    sleep(1);
+                    usleep(10);
                     echo $e->getMessage() . "\n\r";
                 }
             } while ($n < 3);
@@ -180,7 +178,7 @@ function fetchLog()
                                 break;
                             } catch (Error $e) {
                                 $i++;
-                                sleep(1);
+                                usleep(10);
                                 echo $e->getMessage() . "\n\r";
                             }
                         } while ($i < 3);
@@ -216,7 +214,7 @@ function fetchGrade()
                         break;
                     } catch (Error $e) {
                         $i++;
-                        sleep(1);
+                        usleep(10);
                         echo $e->getMessage() . "\n\r";
                     }
                 } while ($i < 3);
