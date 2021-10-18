@@ -97,27 +97,37 @@ function fetchVpl()
     global $db, $ilearn, $url, $users, $secret;
     echo "\n\rFetching vpl submissions from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
-        $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
-        $data = json_decode($response->getBody(), true);
-        foreach ($data as $submission) {
-            $n = 0;
-            do {
-                try {
-                    if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
-                        $db->insert('vpl_submissions', $submission);
-                    } else {
-                        $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
-                    }
-                    break;
-                } catch (Error $e) {
-                    $n++;
-                    usleep(10);
-                    var_dump($e);
-                    exit();
+        usleep(10);
+        $k = 0;
+        do {
+            try {
+                $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $data = json_decode($response->getBody(), true);
+                foreach ($data as $submission) {
+                    $n = 0;
+                    do {
+                        try {
+                            if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
+                                $db->insert('vpl_submissions', $submission);
+                            } else {
+                                $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
+                            }
+                            break;
+                        } catch (Error $e) {
+                            $n++;
+                            usleep(10);
+                            echo $e->getMessage();
+                        }
+                    } while ($n < 3);
                 }
-            } while ($n < 3);
-        }
-        echo progress_bar($i, count($users));
+                echo progress_bar($i, count($users));
+                break;
+            } catch (GuzzleHttp\Exception\ClientException $e) {
+                $k++;
+                usleep(10);
+                echo $e->getMessage() . "\n\r";
+            }
+        } while ($k < 3);
     }
 }
 
@@ -126,28 +136,37 @@ function fetchQuiz()
     global $db, $ilearn, $url, $users, $secret;
     echo "\n\rFetching quiz attempts from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
-        //  echo "Fetching quiz attempts for " . $user['username'] . " \n\r";
-        $response = $ilearn->post($url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
-        $data = json_decode($response->getBody(), true);
-        foreach ($data as $attempt) {
-            $n = 0;
-            do {
-                try {
-                    if (!$db->has('quiz_attempts', ['attemptid' => $attempt['attemptid']])) {
-                        $attempt['questions'] = json_encode($attempt['questions']);
-                        $db->insert('quiz_attempts', $attempt);
-                    } else {
-                        $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
-                    }
-                    break;
-                } catch (Error $e) {
-                    $n++;
-                    usleep(10);
-                    echo $e->getMessage() . "\n\r";
+        $k = 0;
+        do {
+            try {
+                $response = $ilearn->post($url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $data = json_decode($response->getBody(), true);
+                foreach ($data as $attempt) {
+                    $n = 0;
+                    do {
+                        try {
+                            if (!$db->has('quiz_attempts', ['attemptid' => $attempt['attemptid']])) {
+                                $attempt['questions'] = json_encode($attempt['questions']);
+                                $db->insert('quiz_attempts', $attempt);
+                            } else {
+                                $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
+                            }
+                            break;
+                        } catch (Error $e) {
+                            $n++;
+                            usleep(10);
+                            echo $e->getMessage() . "\n\r";
+                        }
+                    } while ($n < 3);
                 }
-            } while ($n < 3);
-        }
-        echo progress_bar($i, count($users));
+                echo progress_bar($i, count($users));
+                break;
+            } catch (GuzzleHttp\Exception\ClientException $e) {
+                $k++;
+                usleep(10);
+                echo $e->getMessage() . "\n\r";
+            }
+        } while ($k < 3);
     }
 }
 
@@ -199,28 +218,38 @@ function fetchGrade()
     global $db, $ilearn, $url, $users, $secret;
     echo "\n\rFetching grade histories from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
-        $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
-        $data = json_decode($response->getBody(), true);
-        if (!$data['empty']) {
-            foreach ($data as $history) {
-                $i = 0;
-                do {
-                    try {
-                        if (!$db->has('grades_history', ['id' => $history['id']])) {
-                            $db->insert('grades_history', $history);
-                        } else {
-                            $db->update('grades_history', $history, ['id' => $history['id']]);
-                        }
-                        break;
-                    } catch (Error $e) {
-                        $i++;
-                        usleep(10);
-                        echo $e->getMessage() . "\n\r";
+        $k = 0;
+        do {
+            try {
+                $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $data = json_decode($response->getBody(), true);
+                if (!$data['empty']) {
+                    foreach ($data as $history) {
+                        $i = 0;
+                        do {
+                            try {
+                                if (!$db->has('grades_history', ['id' => $history['id']])) {
+                                    $db->insert('grades_history', $history);
+                                } else {
+                                    $db->update('grades_history', $history, ['id' => $history['id']]);
+                                }
+                                break;
+                            } catch (Error $e) {
+                                $i++;
+                                usleep(10);
+                                echo $e->getMessage() . "\n\r";
+                            }
+                        } while ($i < 3);
                     }
-                } while ($i < 3);
+                }
+                echo progress_bar($i, count($users));
+                break;
+            } catch (GuzzleHttp\Exception\ClientException $e) {
+                $k++;
+                usleep(10);
+                echo $e->getMessage() . "\n\r";
             }
-        }
-        echo progress_bar($i, count($users));
+        } while ($k < 3);
     }
 }
 
