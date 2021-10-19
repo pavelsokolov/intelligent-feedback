@@ -119,9 +119,9 @@ function fetchVpl()
                 echo progress_bar($i, count($users));
                 break;
             } catch (RequestException $e) {
+                echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                 $k++;
                 usleep(10);
-                echo $e->getMessage() . "\n\r";
             }
         } while ($k < 3);
     }
@@ -150,9 +150,9 @@ function fetchQuiz()
                     break;
                 }
             } catch (RequestException $e) {
+                echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                 $k++;
                 usleep(10);
-                echo $e->getMessage() . "\n\r";
             }
         } while ($k < 3);
     }
@@ -189,9 +189,9 @@ function fetchLog()
                         break;
                     }
                 } catch (RequestException $e) {
+                    echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=log&userid=" . $user['id'] . "&offset=$offset&lastid=" . $lastlogid . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                     $k++;
                     usleep(10);
-                    echo $e->getMessage() . "\n\r";
                 }
             } while ($k < 3);
         } while ($haslogs);
@@ -205,10 +205,11 @@ function fetchGrade()
     echo "\n\rFetching grade histories from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
         $k = 0;
+        $lastdate = $db->query('SELECT timemodified from grades_history where userid = ' . $user['id'] . ' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['timemodified'] ?? 0;
         do {
             try {
                 usleep(10);
-                $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'] . '&lastdate='.$lastdate, ['form_params' => ['secret' => $secret]]);
                 if ($response->getStatusCode() == 200) {
                     $data = json_decode($response->getBody(), true);
                     if (!$data['empty']) {
@@ -224,9 +225,9 @@ function fetchGrade()
                     break;
                 }
             } catch (RequestException $e) {
+                echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'] . '&lastdate='.$lastdate . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                 $k++;
                 usleep(10);
-                echo $e->getMessage() . "\n\r";
             }
         } while ($k < 3);
     }
