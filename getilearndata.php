@@ -40,27 +40,27 @@ if (php_sapi_name() == 'cli') {
 switch ($type) {
     case 'users':
         fetchUsers();
-        echo "\n\rCompleted";
+        echo "\n\rCompleted\n\r";
         break;
     case 'vpl':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchVpl();
-        echo "\n\rCompleted";
+        echo "\n\rCompleted\n\r";
         break;
     case 'grade':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchGrade();
-        echo "\n\rCompleted";
+        echo "\n\rCompleted\n\r";
         break;
     case 'log':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchLog();
-        echo "\n\rCompleted";
+        echo "\n\rCompleted\n\r";
         break;
     case 'quiz':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchQuiz();
-        echo "\n\rCompleted";
+        echo "\n\rCompleted\n\r";
         break;
     default:
         fetchUsers();
@@ -69,7 +69,7 @@ switch ($type) {
         fetchGrade();
         fetchLog();
         fetchQuiz();
-        echo "\n\rCompleted";
+        echo "\n\rCompleted\n\r";
 }
 
 function fetchUsers()
@@ -135,20 +135,21 @@ function fetchQuiz()
         $k = 0;
         do {
             try {
-                usleep(10);
                 $response = $ilearn->post($url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
-                $data = json_decode($response->getBody(), true);
-                foreach ($data as $attempt) {
-                    if (!$db->has('quiz_attempts', ['attemptid' => $attempt['attemptid']])) {
-                        $attempt['questions'] = json_encode($attempt['questions']);
-                        $db->insert('quiz_attempts', $attempt);
-                    } else {
-                        $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
+                if ($response->getStatusCode() == 200) {
+                    $data = json_decode($response->getBody(), true);
+                    foreach ($data as $attempt) {
+                        if (!$db->has('quiz_attempts', ['attemptid' => $attempt['attemptid']])) {
+                            $attempt['questions'] = json_encode($attempt['questions']);
+                            $db->insert('quiz_attempts', $attempt);
+                        } else {
+                            $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
+                        }
                     }
+                    echo progress_bar($i, count($users));
+                    break;
                 }
-                echo progress_bar($i, count($users));
-                break;
-            } catch (Error $e) {
+            } catch (RequestException $e) {
                 $k++;
                 usleep(10);
                 echo $e->getMessage() . "\n\r";
@@ -167,25 +168,32 @@ function fetchLog()
         $haslogs = true;
         $offset = 0;
         do {
-            $response = $ilearn->post($url . "getlogs.php?course=1155&type=log&userid=" . $user['id'] . "&offset=$offset&lastid=" . $lastlogid, ['form_params' => ['secret' => $secret]]);
-            if ($response->getStatusCode() == 200) {
-                $data = json_decode($response->getBody(), true);
-                if ($data['empty']) {
-                    $haslogs = false;
-                } else {
-                    foreach ($data as $log) {
-                        if (!$db->has('log', ['id' => $log['id']])) {
-                            $db->insert('log', $log);
+            $k = 0;
+            do {
+                try {
+                    $response = $ilearn->post($url . "getlogs.php?course=1155&type=log&userid=" . $user['id'] . "&offset=$offset&lastid=" . $lastlogid, ['form_params' => ['secret' => $secret]]);
+                    if ($response->getStatusCode() == 200) {
+                        $data = json_decode($response->getBody(), true);
+                        if ($data['empty']) {
+                            $haslogs = false;
                         } else {
-                            $db->update('log', $log, ['id' => $log['id']]);
+                            foreach ($data as $log) {
+                                if (!$db->has('log', ['id' => $log['id']])) {
+                                    $db->insert('log', $log);
+                                } else {
+                                    $db->update('log', $log, ['id' => $log['id']]);
+                                }
+                            }
                         }
+                        $offset += 1000;
+                        break;
                     }
+                } catch (RequestException $e) {
+                    $k++;
+                    usleep(10);
+                    echo $e->getMessage() . "\n\r";
                 }
-                $offset += 1000;
-            } else {
-                echo "There was an error in " . $response->getEffectiveUrl() . "\n\r";
-                exit();
-            }
+            } while ($k < 3);
         } while ($haslogs);
         echo progress_bar($i, count($users));
     }
@@ -201,19 +209,21 @@ function fetchGrade()
             try {
                 usleep(10);
                 $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
-                $data = json_decode($response->getBody(), true);
-                if (!$data['empty']) {
-                    foreach ($data as $history) {
-                        if (!$db->has('grades_history', ['id' => $history['id']])) {
-                            $db->insert('grades_history', $history);
-                        } else {
-                            $db->update('grades_history', $history, ['id' => $history['id']]);
+                if ($response->getStatusCode() == 200) {
+                    $data = json_decode($response->getBody(), true);
+                    if (!$data['empty']) {
+                        foreach ($data as $history) {
+                            if (!$db->has('grades_history', ['id' => $history['id']])) {
+                                $db->insert('grades_history', $history);
+                            } else {
+                                $db->update('grades_history', $history, ['id' => $history['id']]);
+                            }
                         }
                     }
+                    echo progress_bar($i, count($users));
+                    break;
                 }
-                echo progress_bar($i, count($users));
-                break;
-            } catch (Error $e) {
+            } catch (RequestException $e) {
                 $k++;
                 usleep(10);
                 echo $e->getMessage() . "\n\r";
