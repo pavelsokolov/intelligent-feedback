@@ -9,7 +9,7 @@ error_reporting(E_ERROR | E_WARNING | E_PARSE);
 require 'vendor/autoload.php';
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\RequestException;
 use Medoo\Medoo;
 
 $auth = json_decode(file_get_contents('auth.json'), true);
@@ -118,7 +118,7 @@ function fetchVpl()
                 }
                 echo progress_bar($i, count($users));
                 break;
-            } catch (ClientException $e) {
+            } catch (RequestException $e) {
                 $k++;
                 usleep(10);
                 echo $e->getMessage() . "\n\r";
