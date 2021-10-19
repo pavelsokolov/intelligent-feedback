@@ -9,6 +9,7 @@ error_reporting(E_ERROR | E_WARNING | E_PARSE);
 require 'vendor/autoload.php';
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Medoo\Medoo;
 
 $auth = json_decode(file_get_contents('auth.json'), true);
@@ -39,22 +40,27 @@ if (php_sapi_name() == 'cli') {
 switch ($type) {
     case 'users':
         fetchUsers();
+        echo "\n\rCompleted";
         break;
     case 'vpl':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchVpl();
+        echo "\n\rCompleted";
         break;
     case 'grade':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchGrade();
+        echo "\n\rCompleted";
         break;
     case 'log':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchLog();
+        echo "\n\rCompleted";
         break;
     case 'quiz':
         $users = $db->select('users', ['id', 'username'], ['courseid' => 1155]);
         fetchQuiz();
+        echo "\n\rCompleted";
         break;
     default:
         fetchUsers();
@@ -63,6 +69,7 @@ switch ($type) {
         fetchGrade();
         fetchLog();
         fetchQuiz();
+        echo "\n\rCompleted";
 }
 
 function fetchUsers()
@@ -97,26 +104,21 @@ function fetchVpl()
     global $db, $ilearn, $url, $users, $secret;
     echo "\n\rFetching vpl submissions from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
-        usleep(10);
         $k = 0;
         do {
             try {
-                $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret], 'http_errors' => false]);
-                if ($response->getStatusCode() == 200) {
-                    $data = json_decode($response->getBody(), true);
-                    foreach ($data as $submission) {
-                        if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
-                            $db->insert('vpl_submissions', $submission);
-                        } else {
-                            $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
-                        }
+                $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $data = json_decode($response->getBody(), true);
+                foreach ($data as $submission) {
+                    if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
+                        $db->insert('vpl_submissions', $submission);
+                    } else {
+                        $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
                     }
-                    echo progress_bar($i, count($users));
-                    break;
-                } else {
-                    throw new Exception('Server error 500.');
                 }
-            } catch (Error $e) {
+                echo progress_bar($i, count($users));
+                break;
+            } catch (ClientException $e) {
                 $k++;
                 usleep(10);
                 echo $e->getMessage() . "\n\r";
