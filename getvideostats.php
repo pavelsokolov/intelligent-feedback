@@ -16,12 +16,22 @@ $apiurl = $auth['play2']['url'];
 $play2username = $auth['play2']['username'];
 $play2password = $auth['play2']['password'];
 
+$url = $auth['ilearn']['url'];
+$secret = $auth['ilearn']['secret'];
+$salt = $auth['ilearn']['salt'];
+
 $mediasite = new Client([
     'headers' => [
         'Accept' => 'application/json',
         'sfapikey' => $auth['play2']['sfapikey'],
     ],
     'auth' => [$play2username, $play2password]
+]);
+
+$ilearn = new Client([
+    'headers' => [
+        'Accept' => 'application/json'
+    ]
 ]);
 
 $database = new Medoo([
@@ -81,10 +91,15 @@ if ($o == 2) {
 //echo "Retrieving data for the following credential(s): $u $e\n";
 $timestart = time();
 
+// Get usernames
+
+$users = fetchUsers();
+echo "\n\rCompleted\n\r";
+$usernames = array_map(function ($i) {
+    return $i['username'];
+}, $users);
+
 // Try to generate a user report.
-
-$users = array_map(function($i) {return $i['username'];}, $database->select('users', ['username'], ['courseid' => 1155]));
-
 try {
     $reportid = '1d7d4531a07949d4b6a1ead48852e63c20';
     $report = getReport($reportid);
@@ -101,7 +116,7 @@ try {
     $sleep_time = 5;
 
     // Add only current users
-    $execute = $mediasite->patch($apiurl . "/UserReports('$reportid')", ['json' => ['UserList' => $users]]);
+    $execute = $mediasite->patch($apiurl . "/UserReports('$reportid')", ['json' => ['UserList' => $usernames]]);
 
     // Let's execute.
     $execute = $mediasite->post($apiurl . "/UserReports('$reportid')/Execute", ['json' => ['DateRangeTypeOverride' => 'AllDates']]);
@@ -176,25 +191,29 @@ function checkJobStatus($jobid)
 
 function handleReport($url)
 {
-    global $mediasite, $auth, $database;
-    $myFile = fopen("test.xml", 'w') or die('Problems');
-    $response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
+    global $mediasite, $database, $users, $salt;
+    echo date('H:i:s') . " Report download: Started\n\r";
+    //$myFile = fopen("videostats.xml", 'w') or die('Problems');
+    //$response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
     $file = tmpfile();
     $response = $mediasite->request('GET', "$url", ['sink' => $file]);
     $array = json_decode(json_encode(simplexml_load_file(stream_get_meta_data($file)['uri'])), TRUE);
     // Drop todays insert
     // $database->delete('videos', ['created[>=]' => date('Y-m-d H:i:s', strtotime("today", time()))]);
-    foreach ($array['Users']['User'] as $user) {
-        $userid = $database->get('users', 'id', ['username' => $user['Username']]) ?? 0;
+    echo date('H:i:s') . " Report download: Completed\n\r";
+    foreach ($array['Users']['User'] as $i => $user) {
+        $key = array_search($user['Username'], array_column($users, 'username'));
+        $userid = $users[$key]['id'];
+        $hasheduserid = md5($users[$key]['id'].$salt);
         if ($user['Username'] != 'Anonymous' && $userid) {
             if (key_exists('Id', $user['Presentation'])) {
                 $user['Presentation'] = [$user['Presentation']];
             }
             foreach ($user['Presentation'] as $presentation) {
                 // Delete userid+presentationid info
-                $database->delete('videos', ["AND" => ['userid' => $userid, 'presentation_id' => $presentation['Id']]]);
+                $database->delete('videos', ["AND" => ['userid' => $hasheduserid, 'presentation_id' => $presentation['Id']]]);
                 $database->insert('videos', [
-                    'userid' => $database->get('users', 'id', ['username' => $user['Username']]),
+                    'userid' => $hasheduserid,
                     'presentation_id' => $presentation['Id'],
                     'presentation_name' => $presentation['Title'],
                     'presentation_duration' => $presentation['Duration'],
@@ -205,8 +224,9 @@ function handleReport($url)
                 ]);
             }
         }
+        echo progress_bar($i+1, count($array['Users']['User']));
     }
-
+    echo "\n\rCompleted\n\r";
     fclose($file);
 }
 
@@ -215,6 +235,34 @@ function getReport($reportid)
     global $mediasite, $apiurl;
     $response = $mediasite->get("$apiurl/UserReports('$reportid')");
     return json_decode($response->getBody(), TRUE);
+}
+
+function fetchUsers()
+{
+    global $database, $ilearn, $url, $secret, $salt;
+    echo "Fetching students from courseid 1155 \n\r";
+    $response = $ilearn->post($url . "getlogs.php?course=1155&type=course", ['form_params' => ['secret' => $secret]]);;
+    $users = json_decode($response->getBody(), true);
+    foreach ($users as $i => $user) {
+        $id = md5($user['id'] . $salt);
+        if ($database->has('users', ['id' => $id])) {
+            $database->update('users',
+                [
+                    'id' => $id,
+                    'courseid' => 1155
+                ],
+                ['username' => md5($user['username'])]
+            );
+        } else {
+            $database->insert('users', [
+                'id' => $id,
+                'courseid' => 1155,
+                'username' => md5($user['username'])
+            ]);
+        }
+        echo progress_bar($i+1, count($users));
+    }
+    return $users;
 }
 
 function getUserReportData($reportid)
@@ -226,4 +274,11 @@ function getUserReportData($reportid)
         return json_decode($report['Description']);
     }
     return false;
+}
+
+function progress_bar($done, $total, $info = "", $width = 50): string
+{
+    $perc = round(($done * 100) / $total);
+    $bar = round(($width * $perc) / 100);
+    return sprintf("%s%%[%s>%s]%s\r", $perc, str_repeat("=", $bar), str_repeat(" ", $width - $bar), $info);
 }

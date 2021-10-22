@@ -86,7 +86,7 @@ function fetchUsers()
                 'username' => md5($user['username'])
             ]);
         }
-        echo progress_bar($i, count($users));
+        echo progress_bar($i+1, count($users));
     }
     return $users;
 }
@@ -111,7 +111,7 @@ function fetchVpl()
                         $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
                     }
                 }
-                echo progress_bar($i, count($users));
+                echo progress_bar($i+1, count($users));
                 break;
             } catch (RequestException $e) {
                 echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
@@ -143,7 +143,7 @@ function fetchQuiz()
                             $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
                         }
                     }
-                    echo progress_bar($i, count($users));
+                    echo progress_bar($i+1, count($users));
                     break;
                 }
             } catch (RequestException $e) {
@@ -197,7 +197,7 @@ function fetchLog()
                 }
             } while ($k < 3);
         } while ($haslogs);
-        echo progress_bar($i, count($users));
+        echo progress_bar($i+1, count($users));
     }
 }
 
@@ -226,7 +226,7 @@ function fetchGrade()
                             }
                         }
                     }
-                    echo progress_bar($i, count($users));
+                    echo progress_bar($i+1, count($users));
                     break;
                 }
             } catch (RequestException $e) {
