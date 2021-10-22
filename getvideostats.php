@@ -24,6 +24,14 @@ $mediasite = new Client([
     'auth' => [$play2username, $play2password]
 ]);
 
+$database = new Medoo([
+    'type' => $auth['db']['type'],
+    'host' => $auth['db']['host'],
+    'database' => $auth['db']['database'],
+    'username' => $auth['db']['username'],
+    'password' => $auth['db']['password']
+]);
+
 if (php_sapi_name() == 'cli') {
     $opts = "o:u:e::t:";
     $input = getopt($opts);
@@ -75,6 +83,8 @@ $timestart = time();
 
 // Try to generate a user report.
 
+$users = array_map(function($i) {return $i['username'];}, $database->select('users', ['username'], ['courseid' => 1155]));
+
 try {
     $reportid = '1d7d4531a07949d4b6a1ead48852e63c20';
     $report = getReport($reportid);
@@ -89,6 +99,9 @@ try {
 
     set_time_limit(0);
     $sleep_time = 5;
+
+    // Add only current users
+    $execute = $mediasite->patch($apiurl . "/UserReports('$reportid')", ['json' => ['UserList' => $users]]);
 
     // Let's execute.
     $execute = $mediasite->post($apiurl . "/UserReports('$reportid')/Execute", ['json' => ['DateRangeTypeOverride' => 'AllDates']]);
@@ -163,26 +176,23 @@ function checkJobStatus($jobid)
 
 function handleReport($url)
 {
-    global $mediasite, $auth;
-    //$myFile = fopen("$name.xml", 'w') or die('Problems');
+    global $mediasite, $auth, $database;
+    $myFile = fopen("test.xml", 'w') or die('Problems');
+    $response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
     $file = tmpfile();
     $response = $mediasite->request('GET', "$url", ['sink' => $file]);
     $array = json_decode(json_encode(simplexml_load_file(stream_get_meta_data($file)['uri'])), TRUE);
-    $database = new Medoo([
-        'type' => $auth['db']['type'],
-        'host' => $auth['db']['host'],
-        'database' => $auth['db']['database'],
-        'username' => $auth['db']['username'],
-        'password' => $auth['db']['password']
-    ]);
     // Drop todays insert
-    $database->delete('videos', ['created[>=]' => date('Y-m-d H:i:s', strtotime("today", time()))]);
+    // $database->delete('videos', ['created[>=]' => date('Y-m-d H:i:s', strtotime("today", time()))]);
     foreach ($array['Users']['User'] as $user) {
-        if ($user['Username'] != 'Anonymous' && $database->has('users', ['username' => $user['Username']])) {
+        $userid = $database->get('users', 'id', ['username' => $user['Username']]) ?? 0;
+        if ($user['Username'] != 'Anonymous' && $userid) {
             if (key_exists('Id', $user['Presentation'])) {
                 $user['Presentation'] = [$user['Presentation']];
             }
             foreach ($user['Presentation'] as $presentation) {
+                // Delete userid+presentationid info
+                $database->delete('videos', ["AND" => ['userid' => $userid, 'presentation_id' => $presentation['Id']]]);
                 $database->insert('videos', [
                     'userid' => $database->get('users', 'id', ['username' => $user['Username']]),
                     'presentation_id' => $presentation['Id'],
