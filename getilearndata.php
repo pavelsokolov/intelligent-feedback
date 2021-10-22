@@ -96,13 +96,14 @@ function fetchVpl()
     global $db, $ilearn, $url, $users, $secret, $salt;
     echo "\n\rFetching vpl submissions from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
+        $hasheduserid = md5($user['id'].$salt);
         $k = 0;
         do {
             try {
                 $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
                 $data = json_decode($response->getBody(), true);
                 foreach ($data as $submission) {
-                    $submission['userid'] = md5($submission['userid'] . $salt);
+                    $submission['userid'] = $hasheduserid;
                     $submission['grader'] = md5($submission['grader'] . $salt);
                     if (!$db->has('vpl_submissions', ['id' => $submission['id']])) {
                         $db->insert('vpl_submissions', $submission);
@@ -126,6 +127,7 @@ function fetchQuiz()
     global $db, $ilearn, $url, $users, $secret, $salt;
     echo "\n\rFetching quiz attempts from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
+        $hasheduserid = md5($user['id'].$salt);
         $k = 0;
         do {
             try {
@@ -133,7 +135,7 @@ function fetchQuiz()
                 if ($response->getStatusCode() == 200) {
                     $data = json_decode($response->getBody(), true);
                     foreach ($data as $attempt) {
-                        $attempt['userid'] = md5($attempt['userid'] . $salt);
+                        $attempt['userid'] = $hasheduserid;
                         if (!$db->has('quiz_attempts', ['attemptid' => $attempt['attemptid']])) {
                             $attempt['questions'] = json_encode($attempt['questions']);
                             $db->insert('quiz_attempts', $attempt);
@@ -158,9 +160,10 @@ function fetchLog()
     global $db, $ilearn, $url, $users, $secret, $salt;
     echo "\n\rFetching logs from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
-        usleep(10);
-        $id = md5($user['id'] . $salt);
-        $lastlogid = $db->query('SELECT id from log where userid = ' . $id . ' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['id'] ?? 0;
+        $hasheduserid = md5($user['id'] . $salt);
+        $query = $db->query('SELECT id from log where userid = ' . $hasheduserid . ' and courseid = 1155 order by id desc limit 1');
+        $lastlogid = $query ? $query->fetchAll()[0]['id'] : 0;
+        //$lastlogid = $db->query('SELECT id from log where userid = ' . $id . ' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['id'] ?? 0;
         $haslogs = true;
         $offset = 0;
         do {
@@ -174,7 +177,7 @@ function fetchLog()
                             $haslogs = false;
                         } else {
                             foreach ($data as $log) {
-                                $log['userid'] = md5($log['userid'] . $salt);
+                                $log['userid'] = $hasheduserid;
                                 $log['relateduserid'] = md5($log['relateduserid'] . $salt);
                                 $log['realuserid'] = md5($log['realuserid'] . $salt);
                                 if (!$db->has('log', ['id' => $log['id']])) {
@@ -204,17 +207,18 @@ function fetchGrade()
     echo "\n\rFetching grade histories from courseid 1155 \n\r";
     foreach ($users as $i => $user) {
         $k = 0;
-        $id = md5($user['id'] . $salt);
-        $lastdate = $db->query('SELECT timemodified from grades_history where userid = ' . $id . ' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['timemodified'] ?? 0;
+        $hasheduserid = md5($user['id'] . $salt);
+        $query = $db->query('SELECT timemodified from grades_history where userid = ' . $hasheduserid . ' and courseid = 1155 order by id desc limit 1');
+        $lastdate = $query ? $query->fetchAll()[0]['timemodified'] : 0;
+        //$lastdate = $db->query('SELECT timemodified from grades_history where userid = ' . $id . ' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['timemodified'] ?? 0;
         do {
             try {
-                usleep(10);
                 $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'] . '&lastdate=' . $lastdate, ['form_params' => ['secret' => $secret]]);
                 if ($response->getStatusCode() == 200) {
                     $data = json_decode($response->getBody(), true);
                     if (!$data['empty']) {
                         foreach ($data as $history) {
-                            $history['userid'] = md5($history['userid'] . $salt);
+                            $history['userid'] = $hasheduserid;
                             if (!$db->has('grades_history', ['id' => $history['id']])) {
                                 $db->insert('grades_history', $history);
                             } else {
