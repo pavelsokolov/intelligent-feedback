@@ -104,7 +104,7 @@ try {
     $reportid = '1d7d4531a07949d4b6a1ead48852e63c20';
     $report = getReport($reportid);
     $data = json_decode($report['Description']);
-    if ($data->CompletedOn + 3600 > time()) {
+    if ($data->CompletedOn + 7200 > time()) {
         if ($data->Status == 'ExportSuccessful' && !empty($data->Link)) {
             handleReport($data->Link);
             http_response_code(200);
@@ -193,14 +193,44 @@ function handleReport($url)
 {
     global $mediasite, $database, $users, $salt;
     echo date('H:i:s') . " Report download: Started\n\r";
-    //$myFile = fopen("videostats.xml", 'w') or die('Problems');
-    //$response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
-    $file = tmpfile();
-    $response = $mediasite->request('GET', "$url", ['sink' => $file]);
-    $array = json_decode(json_encode(simplexml_load_file(stream_get_meta_data($file)['uri'])), TRUE);
+    $myFile = fopen("videostats.xml", 'w') or die('Problems');
+    $response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
+    echo date('H:i:s') . " Report download: Completed\n\r";
+    $xml = new XMLReader();
+    $xml->open('videostats.xml');
+    while ($xml->read() && $xml->name !== 'User');
+    while ($xml->name === 'User') {
+        $element = new SimpleXMLElement($xml->readOuterXML());
+        $username = (string) $element->Username;
+        $key = array_search($username, array_column($users, 'username'));
+        $userid = $users[$key]['id'];
+        $hasheduserid = md5($users[$key]['id'].$salt);
+        if ($username != 'Anonymous' && $userid) {
+            foreach ($element->Presentation as $presentation) {
+                    // Delete userid+presentationid info
+                    $database->delete('videos', ["AND" => ['userid' => $hasheduserid, 'presentation_id' => $presentation['Id']]]);
+                    $database->insert('videos', [
+                        'userid' => $hasheduserid,
+                        'presentation_id' => (string)$presentation->Id[0],
+                        'presentation_name' => (string)$presentation->Title[0],
+                        'presentation_duration' => (string)$presentation->Duration[0],
+                        'totalviews' => (int)$presentation->TotalViews[0],
+                        'timewatched' => (int)$presentation->TotalTimeWatched[0],
+                        'percentwatched' => (float)$presentation->PercentWatched[0],
+                        'coverage' => (string)$presentation->Coverage[0]
+                    ]);
+            }
+        }
+        $xml->next('User');
+    }
+    //$file = tmpfile();
+    //$response = $mediasite->request('GET', "$url", ['sink' => $file]);
+    //$array = json_decode(json_encode(simplexml_load_file(stream_get_meta_data($file)['uri'])), TRUE);
+
+    //$array = json_decode(json_encode(simplexml_load_file('videostats.xml')), TRUE);
     // Drop todays insert
     // $database->delete('videos', ['created[>=]' => date('Y-m-d H:i:s', strtotime("today", time()))]);
-    echo date('H:i:s') . " Report download: Completed\n\r";
+    /*
     foreach ($array['Users']['User'] as $i => $user) {
         $key = array_search($user['Username'], array_column($users, 'username'));
         $userid = $users[$key]['id'];
@@ -226,6 +256,7 @@ function handleReport($url)
         }
         echo progress_bar($i+1, count($array['Users']['User']));
     }
+    */
     echo "\n\rCompleted\n\r";
     fclose($file);
 }
