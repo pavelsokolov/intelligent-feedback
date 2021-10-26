@@ -208,7 +208,7 @@ function handleReport($url)
         if ($username != 'Anonymous' && $userid) {
             foreach ($element->Presentation as $presentation) {
                     // Delete userid+presentationid info
-                    $database->delete('videos', ["AND" => ['userid' => $hasheduserid, 'presentation_id' => $presentation['Id']]]);
+                    $database->delete('videos', ["AND" => ['userid' => $hasheduserid, 'presentation_id' => (string)$presentation->Id[0]]]);
                     $database->insert('videos', [
                         'userid' => $hasheduserid,
                         'presentation_id' => (string)$presentation->Id[0],
