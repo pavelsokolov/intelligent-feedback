@@ -258,7 +258,7 @@ function handleReport($url)
     }
     */
     echo "\n\rCompleted\n\r";
-    fclose($file);
+    unlink('videostats.xml');
 }
 
 function getReport($reportid)
