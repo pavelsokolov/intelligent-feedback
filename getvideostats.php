@@ -20,6 +20,8 @@ $url = $auth['ilearn']['url'];
 $secret = $auth['ilearn']['secret'];
 $salt = $auth['ilearn']['salt'];
 
+$courseid = 1337;
+
 $mediasite = new Client([
     'headers' => [
         'Accept' => 'application/json',
@@ -270,9 +272,9 @@ function getReport($reportid)
 
 function fetchUsers()
 {
-    global $database, $ilearn, $url, $secret, $salt;
-    echo "Fetching students from courseid 1155 \n\r";
-    $response = $ilearn->post($url . "getlogs.php?course=1155&type=course", ['form_params' => ['secret' => $secret]]);;
+    global $database, $ilearn, $url, $secret, $salt, $courseid;
+    echo "Fetching students from course id=$courseid \n\r";
+    $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=course", ['form_params' => ['secret' => $secret]]);;
     $users = json_decode($response->getBody(), true);
     foreach ($users as $i => $user) {
         $id = md5($user['id'] . $salt);
@@ -280,14 +282,14 @@ function fetchUsers()
             $database->update('users',
                 [
                     'id' => $id,
-                    'courseid' => 1155
+                    'courseid' => $courseid
                 ],
                 ['username' => md5($user['username'])]
             );
         } else {
             $database->insert('users', [
                 'id' => $id,
-                'courseid' => 1155,
+                'courseid' => $courseid,
                 'username' => md5($user['username'])
             ]);
         }

@@ -17,6 +17,8 @@ $url = $auth['ilearn']['url'];
 $secret = $auth['ilearn']['secret'];
 $salt = $auth['ilearn']['salt'];
 
+$courseid = 1337;
+
 $ilearn = new Client([
     'headers' => [
         'Accept' => 'application/json'
@@ -65,9 +67,9 @@ echo "\n\r" . date('H:i:s') . " Completed\n\r";
 
 function fetchUsers()
 {
-    global $db, $ilearn, $url, $secret, $salt;
-    echo date('H:i:s') . " Fetching students from courseid 1155 \n\r";
-    $response = $ilearn->post($url . "getlogs.php?course=1155&type=course", ['form_params' => ['secret' => $secret]]);;
+    global $db, $ilearn, $url, $secret, $salt, $courseid;
+    echo date('H:i:s') . " Fetching students from course id=$courseid \n\r";
+    $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=course", ['form_params' => ['secret' => $secret]]);;
     $users = json_decode($response->getBody(), true);
     foreach ($users as $i => $user) {
         $id = md5($user['id'] . $salt);
@@ -75,14 +77,14 @@ function fetchUsers()
             $db->update('users',
                 [
                     'id' => $id,
-                    'courseid' => 1155
+                    'courseid' => $courseid
                 ],
                 ['username' => md5($user['username'])]
             );
         } else {
             $db->insert('users', [
                 'id' => $id,
-                'courseid' => 1155,
+                'courseid' => $courseid,
                 'username' => md5($user['username'])
             ]);
         }
@@ -93,14 +95,14 @@ function fetchUsers()
 
 function fetchVpl()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt;
-    echo "\n\r" . date('H:i:s') . " Fetching vpl submissions from courseid 1155 \n\r";
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    echo "\n\r" . date('H:i:s') . " Fetching vpl submissions from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $hasheduserid = md5($user['id'] . $salt);
         $k = 0;
         do {
             try {
-                $response = $ilearn->post($url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=vpl&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
                 $data = json_decode($response->getBody(), true);
                 foreach ($data as $submission) {
                     $submission['userid'] = $hasheduserid;
@@ -114,7 +116,7 @@ function fetchVpl()
                 echo progress_bar($i + 1, count($users));
                 break;
             } catch (RequestException $e) {
-                echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=vpl&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
+                echo "\n\rRequest to " . $url . "getlogs.php?course=$courseid&type=vpl&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                 $k++;
                 usleep(10);
             }
@@ -124,14 +126,14 @@ function fetchVpl()
 
 function fetchQuiz()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt;
-    echo "\n\r" . date('H:i:s') . " Fetching quiz attempts from courseid 1155 \n\r";
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    echo "\n\r" . date('H:i:s') . " Fetching quiz attempts from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $hasheduserid = md5($user['id'] . $salt);
         $k = 0;
         do {
             try {
-                $response = $ilearn->post($url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=quiz&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
                 if ($response->getStatusCode() == 200) {
                     $data = json_decode($response->getBody(), true);
                     foreach ($data as $attempt) {
@@ -147,7 +149,7 @@ function fetchQuiz()
                     break;
                 }
             } catch (RequestException $e) {
-                echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=quiz&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
+                echo "\n\rRequest to " . $url . "getlogs.php?course=$courseid&type=quiz&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                 $k++;
                 usleep(10);
             }
@@ -157,20 +159,20 @@ function fetchQuiz()
 
 function fetchLog()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt;
-    echo "\n\r" . date('H:i:s') . " Fetching logs from courseid 1155 \n\r";
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    echo "\n\r" . date('H:i:s') . " Fetching logs from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $hasheduserid = md5($user['id'] . $salt);
-        $query = $db->query('SELECT id from log where userid = ' . $hasheduserid . ' and courseid = 1155 order by id desc limit 1');
+        $query = $db->query('SELECT id from log where userid = ' . $hasheduserid . ' and courseid = ' . $courseid . ' order by id desc limit 1');
         $lastlogid = $query ? $query->fetchAll()[0]['id'] : 0;
-        //$lastlogid = $db->query('SELECT id from log where userid = ' . $id . ' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['id'] ?? 0;
+        //$lastlogid = $db->query('SELECT id from log where userid = ' . $id . ' and courseid = '.$courseid.' order by id desc limit 1')->fetchAll()[0]['id'] ?? 0;
         $haslogs = true;
         $offset = 0;
         do {
             $k = 0;
             do {
                 try {
-                    $response = $ilearn->post($url . "getlogs.php?course=1155&type=log&userid=" . $user['id'] . "&offset=$offset&lastid=" . $lastlogid, ['form_params' => ['secret' => $secret]]);
+                    $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=log&userid=" . $user['id'] . "&offset=$offset&lastid=" . $lastlogid, ['form_params' => ['secret' => $secret]]);
                     if ($response->getStatusCode() == 200) {
                         $data = json_decode($response->getBody(), true);
                         if ($data['empty']) {
@@ -191,7 +193,7 @@ function fetchLog()
                         break;
                     }
                 } catch (RequestException $e) {
-                    echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=log&userid=" . $user['id'] . "&offset=$offset&lastid=" . $lastlogid . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
+                    echo "\n\rRequest to " . $url . "getlogs.php?course=$courseid&type=log&userid=" . $user['id'] . "&offset=$offset&lastid=" . $lastlogid . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                     $k++;
                     usleep(10);
                 }
@@ -203,17 +205,17 @@ function fetchLog()
 
 function fetchGrade()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt;
-    echo "\n\r" . date('H:i:s') . " Fetching grade histories from courseid 1155 \n\r";
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    echo "\n\r" . date('H:i:s') . " Fetching grade histories from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $k = 0;
         $hasheduserid = md5($user['id'] . $salt);
-        $query = $db->query('SELECT timemodified from grades_history where userid = ' . $hasheduserid . ' and courseid = 1155 order by id desc limit 1');
+        $query = $db->query('SELECT timemodified from grades_history where userid = ' . $hasheduserid . ' and courseid = ' . $courseid . ' order by id desc limit 1');
         $lastdate = $query ? $query->fetchAll()[0]['timemodified'] : 0;
-        //$lastdate = $db->query('SELECT timemodified from grades_history where userid = ' . $id . ' and courseid = 1155 order by id desc limit 1')->fetchAll()[0]['timemodified'] ?? 0;
+        //$lastdate = $db->query('SELECT timemodified from grades_history where userid = ' . $id . ' and courseid = '.$courseid.' order by id desc limit 1')->fetchAll()[0]['timemodified'] ?? 0;
         do {
             try {
-                $response = $ilearn->post($url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'] . '&lastdate=' . $lastdate, ['form_params' => ['secret' => $secret]]);
+                $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=grade&userid=" . $user['id'] . '&lastdate=' . $lastdate, ['form_params' => ['secret' => $secret]]);
                 if ($response->getStatusCode() == 200) {
                     $data = json_decode($response->getBody(), true);
                     if (!$data['empty']) {
@@ -230,7 +232,7 @@ function fetchGrade()
                     break;
                 }
             } catch (RequestException $e) {
-                echo "\n\rRequest to " . $url . "getlogs.php?course=1155&type=grade&userid=" . $user['id'] . '&lastdate=' . $lastdate . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
+                echo "\n\rRequest to " . $url . "getlogs.php?course=$courseid&type=grade&userid=" . $user['id'] . '&lastdate=' . $lastdate . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                 $k++;
                 usleep(10);
             }
