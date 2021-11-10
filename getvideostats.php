@@ -44,19 +44,12 @@ $database = new Medoo([
     'password' => $auth['db']['password']
 ]);
 
+$hideprogress = false;
 if (php_sapi_name() == 'cli') {
-    $opts = "o:u:e::t:";
-    $input = getopt($opts);
-    $op = $input['o'] ?? null;
-    $username = $input['u'] ?? null;
-    $email = $input['e'] ?? null;
-    // $ticket = $input['t'] ?? null;
-} else {
-    // op: export = 1, delete = 2
-    $op = $_GET['op'];
-    $username = $_GET['username'];
-    $email = $_GET['mail'];
-    //$ticket = $_GET['ticket'];
+    $shortopts = 'h';
+    $longopts = ['hideprogress'];
+    $input = getopt($shortopts, $longopts);
+    $hideprogress = key_exists('h', $input) || key_exists('hideprogress', $input);
 }
 
 /*
@@ -106,7 +99,7 @@ try {
     $reportid = '1d7d4531a07949d4b6a1ead48852e63c20';
     $report = getReport($reportid);
     $data = json_decode($report['Description']);
-    if ($data->CompletedOn + 7200 > time()) {
+    if ($data->CompletedOn + 3600 > time()) {
         if ($data->Status == 'ExportSuccessful' && !empty($data->Link)) {
             handleReport($data->Link);
             http_response_code(200);
@@ -272,7 +265,7 @@ function getReport($reportid)
 
 function fetchUsers()
 {
-    global $database, $ilearn, $url, $secret, $salt, $courseid;
+    global $database, $ilearn, $url, $secret, $salt, $courseid, $hideprogress;
     echo "Fetching students from course id=$courseid \n\r";
     $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=course", ['form_params' => ['secret' => $secret]]);;
     $users = json_decode($response->getBody(), true);
@@ -293,7 +286,9 @@ function fetchUsers()
                 'username' => md5($user['username'])
             ]);
         }
-        echo progress_bar($i+1, count($users));
+        if (!$hideprogress) {
+            echo progress_bar($i+1, count($users));
+        }
     }
     return $users;
 }

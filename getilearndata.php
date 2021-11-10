@@ -34,11 +34,13 @@ $db = new Medoo([
 ]);
 
 $type = '';
+$hideprogress= false;
 if (php_sapi_name() == 'cli') {
-    $opts = "t:";
-    $longopts = ["type:"];
+    $opts = "t:h";
+    $longopts = ["type:", "hideprogress"];
     $input = getopt($opts, $longopts);
     $type = $input['t'] ?? $input['type'];
+    $hideprogress = key_exists('h', $input) || key_exists('hideprogress', $input);
 }
 
 $users = fetchUsers();
@@ -47,15 +49,19 @@ switch ($type) {
         break;
     case 'vpl':
         fetchVpl();
+        echo date('H:i:s') . " Completed\n\r";
         break;
     case 'grade':
         fetchGrade();
+        echo date('H:i:s') . " Completed\n\r";
         break;
     case 'log':
         fetchLog();
+        echo date('H:i:s') . " Completed\n\r";
         break;
     case 'quiz':
         fetchQuiz();
+        echo date('H:i:s') . " Completed\n\r";
         break;
     default:
         fetchVpl();
@@ -67,7 +73,7 @@ echo "\n\r" . date('H:i:s') . " Completed\n\r";
 
 function fetchUsers()
 {
-    global $db, $ilearn, $url, $secret, $salt, $courseid;
+    global $db, $ilearn, $url, $secret, $salt, $courseid, $hideprogress;
     echo date('H:i:s') . " Fetching students from course id=$courseid \n\r";
     $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=course", ['form_params' => ['secret' => $secret]]);;
     $users = json_decode($response->getBody(), true);
@@ -88,14 +94,16 @@ function fetchUsers()
                 'username' => md5($user['username'])
             ]);
         }
-        echo progress_bar($i + 1, count($users));
+        if (!$hideprogress) {
+            echo progress_bar($i + 1, count($users));
+        }
     }
     return $users;
 }
 
 function fetchVpl()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid, $hideprogress;
     echo "\n\r" . date('H:i:s') . " Fetching vpl submissions from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $hasheduserid = md5($user['id'] . $salt);
@@ -113,7 +121,9 @@ function fetchVpl()
                         $db->update('vpl_submissions', $submission, ['id' => $submission['id']]);
                     }
                 }
-                echo progress_bar($i + 1, count($users));
+                if (!$hideprogress) {
+                    echo progress_bar($i + 1, count($users));
+                }
                 break;
             } catch (RequestException $e) {
                 echo "\n\rRequest to " . $url . "getlogs.php?course=$courseid&type=vpl&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
@@ -126,7 +136,7 @@ function fetchVpl()
 
 function fetchQuiz()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid, $hideprogress;
     echo "\n\r" . date('H:i:s') . " Fetching quiz attempts from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $hasheduserid = md5($user['id'] . $salt);
@@ -145,7 +155,9 @@ function fetchQuiz()
                             $db->update('quiz_attempts', $attempt, ['attemptid' => $attempt['attemptid']]);
                         }
                     }
-                    echo progress_bar($i + 1, count($users));
+                    if (!$hideprogress) {
+                        echo progress_bar($i + 1, count($users));
+                    }
                     break;
                 }
             } catch (RequestException $e) {
@@ -159,7 +171,7 @@ function fetchQuiz()
 
 function fetchLog()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid, $hideprogress;
     echo "\n\r" . date('H:i:s') . " Fetching logs from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $hasheduserid = md5($user['id'] . $salt);
@@ -199,13 +211,15 @@ function fetchLog()
                 }
             } while ($k < 3);
         } while ($haslogs);
-        echo progress_bar($i + 1, count($users));
+        if (!$hideprogress) {
+            echo progress_bar($i + 1, count($users));
+        }
     }
 }
 
 function fetchGrade()
 {
-    global $db, $ilearn, $url, $users, $secret, $salt, $courseid;
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid, $hideprogress;
     echo "\n\r" . date('H:i:s') . " Fetching grade histories from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $k = 0;
@@ -228,7 +242,9 @@ function fetchGrade()
                             }
                         }
                     }
-                    echo progress_bar($i + 1, count($users));
+                    if (!$hideprogress) {
+                        echo progress_bar($i + 1, count($users));
+                    }
                     break;
                 }
             } catch (RequestException $e) {
