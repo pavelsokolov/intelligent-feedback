@@ -17,8 +17,6 @@ $url = $auth['ilearn']['url'];
 $secret = $auth['ilearn']['secret'];
 $salt = $auth['ilearn']['salt'];
 
-$courseid = 1337;
-
 $ilearn = new Client([
     'headers' => [
         'Accept' => 'application/json'
@@ -35,12 +33,19 @@ $db = new Medoo([
 
 $type = '';
 $hideprogress= false;
+$courseid = 0;
 if (php_sapi_name() == 'cli') {
-    $opts = "t:h";
-    $longopts = ["type:", "hideprogress"];
+    $opts = "c:t:h";
+    $longopts = ["course:", "type:", "hideprogress"];
     $input = getopt($opts, $longopts);
     $type = $input['t'] ?? $input['type'];
+    $courseid = $input['c'] ?? $input['course'];
+    echo $courseid;
     $hideprogress = key_exists('h', $input) || key_exists('hideprogress', $input);
+}
+
+if (!$courseid) {
+    die('No course id is specified');
 }
 
 $users = fetchUsers();
@@ -49,15 +54,12 @@ switch ($type) {
         break;
     case 'vpl':
         fetchVpl();
-        echo date('H:i:s') . " Completed\n\r";
         break;
     case 'grade':
         fetchGrade();
-        echo date('H:i:s') . " Completed\n\r";
         break;
     case 'log':
         fetchLog();
-        echo date('H:i:s') . " Completed\n\r";
         break;
     case 'quiz':
         fetchQuiz();
