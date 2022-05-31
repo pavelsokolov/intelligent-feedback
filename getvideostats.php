@@ -20,8 +20,6 @@ $url = $auth['ilearn']['url'];
 $secret = $auth['ilearn']['secret'];
 $salt = $auth['ilearn']['salt'];
 
-$courseid = 1337;
-
 $mediasite = new Client([
     'headers' => [
         'Accept' => 'application/json',
@@ -46,10 +44,16 @@ $database = new Medoo([
 
 $hideprogress = false;
 if (php_sapi_name() == 'cli') {
-    $shortopts = 'h';
-    $longopts = ['hideprogress'];
+    $shortopts = 'c:r:h';
+    $longopts = ['course:', 'report:', 'hideprogress'];
     $input = getopt($shortopts, $longopts);
+    $courseid = $input['c'] ?? $input['course'];
+    $reportid = $input['r'] ?? $input['report'];
     $hideprogress = key_exists('h', $input) || key_exists('hideprogress', $input);
+}
+
+if (!$courseid || !$reportid) {
+    die('No course id is specified');
 }
 
 /*
@@ -96,7 +100,6 @@ $usernames = array_map(function ($i) {
 
 // Try to generate a user report.
 try {
-    $reportid = '1d7d4531a07949d4b6a1ead48852e63c20';
     $report = getReport($reportid);
     $data = json_decode($report['Description']);
     if ($data->CompletedOn + 3600 > time()) {
