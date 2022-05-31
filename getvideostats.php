@@ -191,7 +191,7 @@ function checkJobStatus($jobid)
 
 function handleReport($url)
 {
-    global $mediasite, $database, $users, $salt;
+    global $mediasite, $database, $users, $salt, $reportid;
     echo date('H:i:s') . " Report download: Started\n\r";
     $myFile = fopen("videostats"."$reportid"."xml", 'w') or die('Problems');
     $response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
