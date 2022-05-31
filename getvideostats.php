@@ -20,6 +20,8 @@ $url = $auth['ilearn']['url'];
 $secret = $auth['ilearn']['secret'];
 $salt = $auth['ilearn']['salt'];
 
+$courseid = 1337;
+
 $mediasite = new Client([
     'headers' => [
         'Accept' => 'application/json',
@@ -191,11 +193,11 @@ function handleReport($url)
 {
     global $mediasite, $database, $users, $salt;
     echo date('H:i:s') . " Report download: Started\n\r";
-    $myFile = fopen("videostats.xml", 'w') or die('Problems');
+    $myFile = fopen("videostats"."$reportid"."xml", 'w') or die('Problems');
     $response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
     echo date('H:i:s') . " Report download: Completed\n\r";
     $xml = new XMLReader();
-    $xml->open('videostats.xml');
+    $xml->open("videostats"."$reportid"."xml");
     while ($xml->read() && $xml->name !== 'User');
     while ($xml->name === 'User') {
         $element = new SimpleXMLElement($xml->readOuterXML());
@@ -225,7 +227,7 @@ function handleReport($url)
     //$response = $mediasite->request('GET', "$url", ['sink' => $file]);
     //$array = json_decode(json_encode(simplexml_load_file(stream_get_meta_data($file)['uri'])), TRUE);
 
-    //$array = json_decode(json_encode(simplexml_load_file('videostats.xml')), TRUE);
+    //$array = json_decode(json_encode(simplexml_load_file("videostats"."$reportid"."xml")), TRUE);
     // Drop todays insert
     // $database->delete('videos', ['created[>=]' => date('Y-m-d H:i:s', strtotime("today", time()))]);
     /*
@@ -256,7 +258,7 @@ function handleReport($url)
     }
     */
     echo "\n\rCompleted\n\r";
-    unlink('videostats.xml');
+    unlink("videostats"."$reportid"."xml");
 }
 
 function getReport($reportid)
