@@ -63,12 +63,15 @@ switch ($type) {
         break;
     case 'quiz':
         fetchQuiz();
-        echo date('H:i:s') . " Completed\n\r";
+        break;
+    case 'assign':
+        fetchAssign();
         break;
     default:
         fetchVpl();
         fetchGrade();
         fetchLog();
+        fetchAssign();
         fetchQuiz();
 }
 echo "\n\r" . date('H:i:s') . " Completed\n\r";
@@ -251,6 +254,39 @@ function fetchGrade()
                 }
             } catch (RequestException $e) {
                 echo "\n\rRequest to " . $url . "getlogs.php?course=$courseid&type=grade&userid=" . $user['id'] . '&lastdate=' . $lastdate . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
+                $k++;
+                usleep(10);
+            }
+        } while ($k < 3);
+    }
+}
+
+function fetchAssign()
+{
+    global $db, $ilearn, $url, $users, $secret, $salt, $courseid, $hideprogress;
+    echo "\n\r" . date('H:i:s') . " Fetching assign submissions from course id=$courseid \n\r";
+    foreach ($users as $i => $user) {
+        $hasheduserid = md5($user['id'] . $salt);
+        echo "$hasheduserid";
+        $k = 0;
+        do {
+            try {
+                $response = $ilearn->post($url . "getlogs.php?course=$courseid&type=assign&userid=" . $user['id'], ['form_params' => ['secret' => $secret]]);
+                $data = json_decode($response->getBody(), true);
+                foreach ($data as $submission) {
+                    $submission['userid'] = $hasheduserid;
+                    if (!$db->has('assign_submissions', ['id' => $submission['id']])) {
+                        $db->insert('assign_submissions', $submission);
+                    } else {
+                        $db->update('assign_submissions', $submission, ['id' => $submission['id']]);
+                    }
+                }
+                if (!$hideprogress) {
+                    echo progress_bar($i + 1, count($users));
+                }
+                break;
+            } catch (RequestException $e) {
+                echo "\n\rRequest to " . $url . "getlogs.php?course=$courseid&type=assign&userid=" . $user['id'] . ' returned a ' . $e->getCode() . " code. Retrying... \n\r";
                 $k++;
                 usleep(10);
             }

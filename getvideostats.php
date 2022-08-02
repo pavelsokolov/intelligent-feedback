@@ -191,7 +191,7 @@ function checkJobStatus($jobid)
 
 function handleReport($url)
 {
-    global $mediasite, $database, $users, $salt, $reportid;
+    global $mediasite, $database, $users, $salt, $reportid, $courseid;
     echo date('H:i:s') . " Report download: Started\n\r";
     $myFile = fopen("videostats-$reportid.xml", 'w') or die('Problems');
     $response = $mediasite->request('GET', "$url", ['sink' => $myFile]);
@@ -211,6 +211,7 @@ function handleReport($url)
                     $database->delete('videos', ["AND" => ['userid' => $hasheduserid, 'presentation_id' => (string)$presentation->Id[0]]]);
                     $database->insert('videos', [
                         'userid' => $hasheduserid,
+                        'courseid' => $courseid,
                         'presentation_id' => (string)$presentation->Id[0],
                         'presentation_name' => (string)$presentation->Title[0],
                         'presentation_duration' => (string)$presentation->Duration[0],
