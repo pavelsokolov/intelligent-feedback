@@ -267,7 +267,6 @@ function fetchAssign()
     echo "\n\r" . date('H:i:s') . " Fetching assign submissions from course id=$courseid \n\r";
     foreach ($users as $i => $user) {
         $hasheduserid = md5($user['id'] . $salt);
-        echo "$hasheduserid";
         $k = 0;
         do {
             try {
